@@ -1,0 +1,21 @@
+# 太空舱宣传视频生成 Agent 依赖清单
+# 安装命令：pip install -r requirements.txt
+
+# Web 前端
+streamlit>=1.28.0
+
+# 阿里云 DashScope SDK（图像 wan2.7-image-pro + 视频 wan2.1-i2v-plus）
+# 注意：图生视频要求 SDK >= 1.25.8
+dashscope>=1.25.8
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# 图像处理
+Pillow>=10.0.0
+
+# HTTP 请求
+requests>=2.31.0
+
+# 可选：kenburns 运镜拼接兜底（VIDEO_MODEL=kenburns 时使用，需 ffmpeg）
+# moviepy>=1.0.3
