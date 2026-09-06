@@ -19,6 +19,7 @@
 
 import os
 import time
+import json
 import base64
 import requests
 from io import BytesIO
@@ -36,14 +37,14 @@ logger = get_logger(__name__)
 VIDEO_MODEL = "wan3.0-video"
 
 
-def _image_to_base64(path: str, max_side: int = 1536) -> str:
-    """压缩图片并转 base64（控制体积）。"""
+def _image_to_base64(path: str, max_side: int = 1024) -> str:
+    """压缩图片并转 base64（控制体积：payload 过大会导致跨网提交写超时）。"""
     img = Image.open(path)
     img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
     buf = BytesIO()
-    img.save(buf, format="JPEG", quality=90)
+    img.save(buf, format="JPEG", quality=85)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
@@ -76,10 +77,13 @@ def generate_video(reference_images: list, video_prompt: str):
         },
     }
     if reference_images:
-        payload["input"]["media"] = [
-            {"type": "reference_image", "url": _to_url_or_data_uri(p)}
-            for p in reference_images
-        ]
+        encoded = {}                     # 重复参考图（末尾锚定重复主卧）只编码一次
+        media = []
+        for p in reference_images:
+            if p not in encoded:
+                encoded[p] = _to_url_or_data_uri(p)
+            media.append({"type": "reference_image", "url": encoded[p]})
+        payload["input"]["media"] = media
     else:
         logger.warning("未找到参考图，按纯提示词文生视频")
 
@@ -97,7 +101,11 @@ def _submit_and_poll(payload: dict, cfg: dict):
     }
 
     try:
-        resp = requests.post(submit_url, json=payload, headers=headers, timeout=60)
+        logger.info(
+            f"提交视频任务: model={VIDEO_MODEL}, "
+            f"payload≈{len(json.dumps(payload)) / 1024:.0f} KB"
+        )
+        resp = requests.post(submit_url, json=payload, headers=headers, timeout=180)
         data = resp.json()
         task_id = ((data.get("output") or {}).get("task_id")) or data.get("task_id")
         if not task_id:

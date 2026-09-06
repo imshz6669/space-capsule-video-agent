@@ -11,3 +11,7 @@ venv/
 node_modules/
 .DS_Store
 *.log
+data/output/videos/
+data/output/images/
+data/output/clean_refs/
+data/output/index.json
